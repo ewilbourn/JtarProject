@@ -11,6 +11,8 @@ using namespace std;
 void helpInfo();
 void storeFileInfo(vector <string> v);
 bool fileExist(string fileName);
+void parseStat(string filename);
+vector<string> splitOnWhiteSpace(string input);
 
 int main(int argc, char *argv[])
 {
@@ -81,6 +83,7 @@ void storeFileInfo(vector <string> v)
 	{
 		if (fileExist(v[i]))
 		{
+			parseStat(v[i]);			
 			string command = "ls -l " + v[i] + " > file.txt";
 			system(command.c_str());
 		
@@ -112,5 +115,96 @@ bool fileExist(string fileName)
         ifstream test(fileName);
 
 	return (test.is_open() ? true : false);
+}
+
+//call the stat command on a file with the "system" call and iterate through the information
+//that is stored from this 
+//
+//postcondition: return a vector of File objects from this method; or return a 
+//vector of file structs that will later be added to file objects?
+void parseStat(string filename)
+{
+	string command = "stat " + filename + " > stats.txt";
+	fstream stat_file("stats.txt", ios::in);
+	system(command.c_str());
+	//variable to read in key words to find the data we want
+	string key_word;
+
+	//variable to store critical info for file class in
+	string file_info;
+	
+	//counter to track the number of times we see the "Access: " key_word
+	int times_access_seen;
+	
+	//while the file ptr is still alive, keep iterating through the file
+	while(stat_file)
+	{
+		stat_file >> key_word;
+		
+/*		if(key_word == "Block:")
+		{
+			getline(stat_file, file_info);
+			//split the string of data we got in file_info into a vector
+			vector <string> v = splitOnWhiteSpace(file_info);
+			//the last index of our vector will tell us if it's a 
+			//file or directory
+			cout << "v.size(): " << v.size() << endl;
+			bool isDirectory = (v[v.size()] == "file" ? false : true);
+			cout << "file info: " << v[v.size()] << endl;
+			cout << "isDirectory: " << boolalpha << isDirectory << endl;	
+			cout << "file_info: " << file_info << endl;		
+		}*/
+		if (key_word == "Access:")
+		{
+			times_access_seen += 1;
+			
+			cout << "key_word: " << key_word << endl;
+			stat_file >> file_info;
+			if (times_access_seen == 1)
+			{ 
+				cout << "first time seeing access" << endl;
+				cout << "file_info: " << file_info << endl;
+				
+				//get position of the ( in the string
+				size_t pos = file_info.find("("); 
+				string protection_mode = (file_info.substr(pos+1, 4));
+				cout << "protection_mode: " << protection_mode << endl;
+				//get position of the / in the string
+				pos = file_info.find("/"); 
+				string file_or_dir = file_info.substr(pos+1,1);
+				
+				bool isDirectory = (file_or_dir == "d" ? true : false);
+				
+				cout << "file_or_dir: " << file_or_dir << endl;
+				cout << "isDirectory: " << boolalpha << isDirectory << endl;	
+			}
+			cout << "file_info: " << file_info << endl;
+		}
+	}		
+}
+
+//method to split a string on the white space and put all words into a
+//vector of strings
+vector<string> splitOnWhiteSpace(string input)
+{
+	cout << "splitting on white space" << endl;
+        vector <string> words;
+        string local_word;
+        for (int i = 0; i < input.size(); i++)
+        {
+                if(input[i] != ' ')
+                {
+                        local_word += input[i];
+                }
+                else
+                {
+        		cout << "word: " << local_word << endl; 
+	                words.push_back(local_word);
+                        local_word = "";
+                }
+        }
+	words.push_back(local_word);
+  	cout << "stop splitting on white space" << endl;
+	return words;
 }
 
