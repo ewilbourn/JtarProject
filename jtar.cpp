@@ -130,25 +130,28 @@ void parseStat(string filename)
 			
 			cout << "key_word: " << key_word << endl;
 			getline(stat_file,file_info);
+			//call the method to get the protection mode
+			//
+			//method to pass in string and return c-string
 			if (times_access_seen == 1)
 			{ 
-				cout << "first time seeing access" << endl;
-				cout << "file_info: " << file_info << endl;
-				
 				//get position of the ( in the string
 				size_t pos = file_info.find("("); 
 				string protection_mode = (file_info.substr(pos+1, 4));
-				cout << "protection_mode: " << protection_mode << endl;
+				
+				//create a pointer to hold our protection mode string in
+				char* char_array_p;
+				char_array_p = &protection_mode[0];
+				
 				//get position of the / in the string
 				pos = file_info.find("/"); 
 				string file_or_dir = file_info.substr(pos+1,1);
 				
 				bool isDirectory = (file_or_dir == "d" ? true : false);
-				
-				cout << "file_or_dir: " << file_or_dir << endl;
-				cout << "isDirectory: " << boolalpha << isDirectory << endl;	
 			}
-
+			//call the method to get the time stamp
+			//
+			//method that passes in a string and returns a c-string
 			else if (times_access_seen == 2)
 			{
 				int dash_pos = file_info.find("-");
