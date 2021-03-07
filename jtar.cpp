@@ -5,6 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <cstring> /*used for converting string to c-string*/
 #include "file.h" /*for the File objects*/
 
 using namespace std;
@@ -49,24 +50,6 @@ int main(int argc, char *argv[])
 //screen
 void helpInfo()
 {
-/*	cout << "\n\n------------------------OPTIONS--------------------------"<< endl;
-	cout << "1. a.out -cf tarfile file1 dir1...\n" << endl;
-
-	cout << "This specifies the executable (a.out) to make a tar file\n"	
-		"named tarfile based on the files or directories following\n"
-		"the name of the tarfile." << endl; 
-	cout << "\n" << endl;	
-
-	cout << "2. a.out -tf tarfile\n" << endl;
-	cout << "This lists the names of all the files that have been packed\n"	
-		"into a tar file. It does not recreate anything." << endl;
-	cout << "\n" << endl;
-
-	cout << "3. a.out -xf tarfile\n" << endl;
-	cout << "This reads in a tar file and recreate all the files saves in\n"	
-		"that tarfile.." << endl;
-	cout << "\n" << endl;*/
-	
 	//display the contents of the help file that Dr. Digh shared 
 	//with us to the screen
 	system("cat help");
@@ -141,19 +124,6 @@ void parseStat(string filename)
 	{
 		stat_file >> key_word;
 		
-/*		if(key_word == "Block:")
-		{
-			getline(stat_file, file_info);
-			//split the string of data we got in file_info into a vector
-			vector <string> v = splitOnWhiteSpace(file_info);
-			//the last index of our vector will tell us if it's a 
-			//file or directory
-			cout << "v.size(): " << v.size() << endl;
-			bool isDirectory = (v[v.size()] == "file" ? false : true);
-			cout << "file info: " << v[v.size()] << endl;
-			cout << "isDirectory: " << boolalpha << isDirectory << endl;	
-			cout << "file_info: " << file_info << endl;		
-		}*/
 		if (key_word == "Access:")
 		{
 			times_access_seen += 1;
@@ -184,7 +154,6 @@ void parseStat(string filename)
 				int dash_pos = file_info.find("-");
 				int colon_pos = file_info.find(":");
 				string year = file_info.substr(0,dash_pos);
-				cout << "year: " << year << endl;
 
 				//dash_pos+1 is the starting place because we want it to 
 				//start the character after the dash
@@ -194,22 +163,15 @@ void parseStat(string filename)
 				//dash (+1), then two characters for the month (+2), and 1 
 				//character for the second dash (+1)
 				string day = file_info.substr(dash_pos+4, 2);
-				cout << "month: " << month << endl;
-				cout << "day: " << day << endl;
-
 				string hour = file_info.substr(colon_pos-2, 2);
-				cout << "hour: " << hour << endl;
-	
-
 				string minute = file_info.substr(colon_pos+1, 2);
-				
 				string second = file_info.substr(colon_pos+4, 2);
-				cout << "minute: " << minute << endl;
-				cout << "second: " << second << endl;
-				//cout << "file_info: " << file_info << endl;
-					
+
+				string full_date = year+month+day+hour+minute+"."+second;
+				//create a pointer to hold our string in
+				char* char_array;
+				char_array = &full_date[0];
 			}
-			cout << "file_info: " << file_info << endl;
 		}
 	}		
 }
