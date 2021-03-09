@@ -6,14 +6,16 @@
 #include <vector>
 #include <fstream>
 #include <cstring> /*used for converting string to c-string*/
+#include <stdio.h> /*for strcpy*/
 #include "file.h" /*for the File objects*/
 
 using namespace std;
 void helpInfo();
-void storeFileInfo(vector <string> v);
+vector<File> storeFileInfo(vector <string> v);
 bool fileExist(string fileName);
-void parseStat(string filename);
+File parseStat(string filename);
 vector<string> splitOnWhiteSpace(string input);
+void fillTarFile(string tarfile, vector<File>v);
 
 int main(int argc, char *argv[])
 {
@@ -27,6 +29,7 @@ int main(int argc, char *argv[])
 		if (argc >= 4)
 		{
 			cout << "argv[2]: " << argv[2] << endl;
+			string tarfile = argv[2];
 			vector <string> files;
 			//start the iterator at 3 because argv[2] is the name 
 			//of the tarfile (binary file) we're loading info into
@@ -34,13 +37,22 @@ int main(int argc, char *argv[])
 			{
 				files.push_back(argv[i]);			
 			}	
-			storeFileInfo(files);
+			vector <File> file_objs = storeFileInfo(files);
+			fillTarFile(tarfile, file_objs);
 		}
 		else
 		{
 			cout << "Error: Only " << argc << " arguments were entered when at least 4 were needed." << endl;
 		}
+	}
+	else if(arg1 == "-tf")
+	{
+
 	} 
+	else if(arg1 == "-xf")
+	{
+
+	}
 	return 0;
 }
 
@@ -57,16 +69,16 @@ void helpInfo()
 
 //method to feed all the file protection data into a file
 //precondition: pass in a vector of file names (string)
-//postcondition: return nothing, but a file called file.txt will have all the 
-//file protection information for each file in the vector that was passed in
-void storeFileInfo(vector <string> v)
+//postcondition: return a vector of File objects
+vector<File> storeFileInfo(vector <string> v)
 {
-	cout << "v.size(): " << v.size() << endl;
+	vector <File> file_objs;
 	for (int i = 0; i < v.size(); i++)
 	{
 		if (fileExist(v[i]))
 		{
-			parseStat(v[i]);			
+			File f = parseStat(v[i]);	
+			file_objs.push_back(f);		
 			string command = "ls -l " + v[i] + " > file.txt";
 			system(command.c_str());
 		
@@ -79,6 +91,9 @@ void storeFileInfo(vector <string> v)
 			//in a string so we can grab information from it
 			getline(file, line);
 			cout << line << endl;
+
+			//remove the file.txt file from the directory
+			system("rm file.txt");
 		}
 		else
 		{
@@ -87,6 +102,7 @@ void storeFileInfo(vector <string> v)
 		}
 		
 	}
+	return file_objs;
 }
 
 //method to determine if a file exists
@@ -102,10 +118,9 @@ bool fileExist(string fileName)
 
 //call the stat command on a file with the "system" call and iterate through the information
 //that is stored from this 
-//
-//postcondition: return a vector of File objects from this method; or return a 
-//vector of file structs that will later be added to file objects?
-void parseStat(string filename)
+//precondition: pass in a string object that has the filename in it
+//postcondition: return a File object 
+File parseStat(string filename)
 {
 	string command = "stat " + filename + " > stats.txt";
 	fstream stat_file("stats.txt", ios::in);
@@ -118,7 +133,12 @@ void parseStat(string filename)
 	
 	//counter to track the number of times we see the "Access: " key_word
 	int times_access_seen;
-	
+
+	//character arrays for our file object	
+	char name_array[81];
+	char size_array[7];
+	char pmode_array[5];
+	char stamp_array[16];
 	//while the file ptr is still alive, keep iterating through the file
 	while(stat_file)
 	{
@@ -128,7 +148,6 @@ void parseStat(string filename)
 		{
 			times_access_seen += 1;
 			
-			cout << "key_word: " << key_word << endl;
 			getline(stat_file,file_info);
 			//call the method to get the protection mode
 			//
@@ -139,15 +158,14 @@ void parseStat(string filename)
 				size_t pos = file_info.find("("); 
 				string protection_mode = (file_info.substr(pos+1, 4));
 				
-				//create a pointer to hold our protection mode string in
-				char* char_array_p;
-				char_array_p = &protection_mode[0];
-				
 				//get position of the / in the string
 				pos = file_info.find("/"); 
 				string file_or_dir = file_info.substr(pos+1,1);
 				
 				bool isDirectory = (file_or_dir == "d" ? true : false);
+				//copy the string with our file info into a char array
+				strcpy(pmode_array, protection_mode.c_str());
+				
 			}
 			//call the method to get the time stamp
 			//
@@ -171,12 +189,27 @@ void parseStat(string filename)
 				string second = file_info.substr(colon_pos+4, 2);
 
 				string full_date = year+month+day+hour+minute+"."+second;
-				//create a pointer to hold our string in
-				char* char_array;
-				char_array = &full_date[0];
+				//copy the string with our full date into a char array
+				strcpy(stamp_array, full_date.c_str());
 			}
 		}
+		else if (key_word == "Size:")
+		{
+			stat_file >> file_info;
+			//copy the string with our file info into a char array
+			strcpy(size_array, file_info.c_str());
+		}
+		
 	}		
+	//copy the string with our file info into a char array
+	strcpy(name_array, filename.c_str());
+	
+	//instantiate a file object with the character arrays
+	File f(name_array, pmode_array, size_array, stamp_array);
+	
+	//remove the file.txt file from the directory
+	system("rm stats.txt");
+	return f;
 }
 
 //method to split a string on the white space and put all words into a
@@ -204,3 +237,12 @@ vector<string> splitOnWhiteSpace(string input)
 	return words;
 }
 
+//method to fill our tarfile (binary file)
+void fillTarFile(string tarfile, vector<File>v)
+{
+	fstream outfile (tarfile, ios::out | ios::binary);
+	for (int i = 0; i < v.size(); i++)
+	{
+		outfile.write( (const char *) &v[i], sizeof (File));	
+	}
+}
