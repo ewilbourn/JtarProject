@@ -8,7 +8,9 @@
 #include <cstring> /*used for converting string to c-string*/
 #include <stdio.h> /*for strcpy*/
 #include "file.h" /*for the File objects*/
-
+/*the three libraries needed for getting the infromation about each file*/
+#include <sys/stat.h>//has the stat struct info
+#include <sys/types.h>
 using namespace std;
 void helpInfo();
 vector<File> storeFileInfo(vector <string> v);
@@ -120,7 +122,7 @@ bool fileExist(string fileName)
 //that is stored from this 
 //precondition: pass in a string object that has the filename in it
 //postcondition: return a File object 
-File parseStat(string filename)
+/*File parseStat(string filename)
 {
 	string command = "stat " + filename + " > stats.txt";
 	fstream stat_file("stats.txt", ios::in);
@@ -209,6 +211,51 @@ File parseStat(string filename)
 	
 	//remove the file.txt file from the directory
 	system("rm stats.txt");
+	return f;
+}*/
+
+
+//call the stat command on a file with the "system" call and iterate through the information
+//that is stored from this 
+//precondition: pass in a string object that has the filename in it
+//postcondition: return a File object 
+File parseStat(string filename)
+{
+	struct stat buf;
+	
+	//character arrays for our file object	
+	char name[81];
+	char size[7];
+	char pmode[5];
+	char stamp[16];
+
+        lstat (filename.c_str(), &buf);
+	//if (S_ISREG(buf.st_mode))
+	//{
+	cout << filename << ", ";
+	cout << "regular";
+	cout << ", size = " << buf.st_size;
+	cout << ", protection = " << ((buf.st_mode & S_IRWXU) >> 6) << ((buf.st_mode & S_IRWXG) >> 3) << (buf.st_mode & S_IRWXO);
+
+	char stamp[16];
+	strftime(stamp, 16, "%Y%m%d%H%M.%S", localtime(&buf.st_mtime));
+
+	cout << ", timestamp = " << stamp << endl;
+		
+	//fill up the char arrays for the File object
+	
+	//copy the string with our filename into a char array
+	strcpy(name, filename.c_str());
+		
+	//}
+	//else if (S_ISDIR(buf.st_mode))
+	//{
+	//	cout << filename << ", ";
+	//	cout << "directory" << endl;
+	//}
+
+	//instantiate a file object with the character arrays
+	File f(name_array, pmode_array, size_array, stamp_array);
 	return f;
 }
 
