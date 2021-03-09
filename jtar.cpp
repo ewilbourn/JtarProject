@@ -161,33 +161,6 @@ File parseStat(string filename)
 	return f;
 }
 
-//method to split a string on the white space and put all words into a
-//vector of strings
-//precondition: pass in a string
-//postcondition: return a vector of strings 
-vector<string> splitOnWhiteSpace(string input)
-{
-	cout << "splitting on white space" << endl;
-        vector <string> words;
-        string local_word;
-        for (int i = 0; i < input.size(); i++)
-        {
-                if(input[i] != ' ')
-                {
-                        local_word += input[i];
-                }
-                else
-                {
-        		cout << "word: " << local_word << endl; 
-	                words.push_back(local_word);
-                        local_word = "";
-                }
-        }
-	words.push_back(local_word);
-  	cout << "stop splitting on white space" << endl;
-	return words;
-}
-
 //method to fill our tarfile (binary file)
 //precondition: pass in the file name for the tarfile (for creating an
 //fstream object) and a vector of Files that we are loading into the tarfile
