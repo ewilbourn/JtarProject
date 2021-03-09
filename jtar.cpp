@@ -8,9 +8,10 @@
 #include <cstring> /*used for converting string to c-string*/
 #include <stdio.h> /*for strcpy*/
 #include "file.h" /*for the File objects*/
-/*the three libraries needed for getting the infromation about each file*/
+/*these two libraries needed for getting the infromation about each file*/
 #include <sys/stat.h>//has the stat struct info
 #include <sys/types.h>
+#include <sstream>/*for converting int to string*/
 using namespace std;
 void helpInfo();
 vector<File> storeFileInfo(vector <string> v);
@@ -18,6 +19,7 @@ bool fileExist(string fileName);
 File parseStat(string filename);
 vector<string> splitOnWhiteSpace(string input);
 void fillTarFile(string tarfile, vector<File>v);
+string int_to_str(int input);
 
 int main(int argc, char *argv[])
 {
@@ -215,8 +217,8 @@ bool fileExist(string fileName)
 }*/
 
 
-//call the stat command on a file with the "system" call and iterate through the information
-//that is stored from this 
+//call the lstat command that will get the stat information for a file - this came
+//from Dr. Digh's utility.cpp file
 //precondition: pass in a string object that has the filename in it
 //postcondition: return a File object 
 File parseStat(string filename)
@@ -228,16 +230,14 @@ File parseStat(string filename)
 	char size[7];
 	char pmode[5];
 	char stamp[16];
+        
+	//this makes a call to our file being passed
+	lstat (filename.c_str(), &buf);
 
-        lstat (filename.c_str(), &buf);
-	//if (S_ISREG(buf.st_mode))
-	//{
 	cout << filename << ", ";
-	cout << "regular";
 	cout << ", size = " << buf.st_size;
 	cout << ", protection = " << ((buf.st_mode & S_IRWXU) >> 6) << ((buf.st_mode & S_IRWXG) >> 3) << (buf.st_mode & S_IRWXO);
 
-	char stamp[16];
 	strftime(stamp, 16, "%Y%m%d%H%M.%S", localtime(&buf.st_mtime));
 
 	cout << ", timestamp = " << stamp << endl;
@@ -246,16 +246,23 @@ File parseStat(string filename)
 	
 	//copy the string with our filename into a char array
 	strcpy(name, filename.c_str());
-		
-	//}
-	//else if (S_ISDIR(buf.st_mode))
-	//{
-	//	cout << filename << ", ";
-	//	cout << "directory" << endl;
-	//}
-
+	
+	//copy the size into a string and copy the string into char array	
+	string s_size = int_to_str(buf.st_size);
+	strcpy(size, s_size.c_str());
+	
+	//copy the size into a string and copy the string into char array	
+	string s_pmode = int_to_str(buf.st_mode & S_IRWXU);
+	s_pmode += int_to_str(buf.st_mode & S_IRWXG);
+	s_pmode += int_to_str(buf.st_mode & S_IRWXO);
+	
+	strcpy(pmode, s_pmode.c_str());
+	
+	//copy the modification time to the stamp char array
+	strftime(stamp, 16, "%Y%m%d%H%M.%S", localtime(&buf.st_mtime));
+	
 	//instantiate a file object with the character arrays
-	File f(name_array, pmode_array, size_array, stamp_array);
+	File f(name, pmode, size, stamp);
 	return f;
 }
 
@@ -293,3 +300,20 @@ void fillTarFile(string tarfile, vector<File>v)
 		outfile.write( (const char *) &v[i], sizeof (File));	
 	}
 }
+
+//method to convert a given integer to a string value
+string int_to_str(int input)
+{
+	stringstream s;
+
+	//read integer into stringstream
+	s << input;
+
+	string s_input;
+
+	//read integer in stringstream into a string
+	s >> s_input;
+
+	return s_input;
+}
+
