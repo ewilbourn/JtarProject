@@ -2,9 +2,9 @@
 //CSC 310 - Project 2 - jtar implementation
 //3/1/2021
 
-#include <iostream>
-#include <vector>
-#include <fstream>
+#include <iostream> /*standard input/output*/
+#include <vector> /*vector object*/
+#include <fstream>/*file objects*/
 #include <cstring> /*used for converting string to c-string*/
 #include <stdio.h> /*for strcpy*/
 #include "file.h" /*for the File objects*/
@@ -12,13 +12,19 @@
 #include <sys/stat.h>//has the stat struct info
 #include <sys/types.h>
 #include <sstream>/*for converting int to string*/
+#include <experimental/filesystem> /*for recursively iterating through file*/
+
 using namespace std;
+
+//found this here: https://en.cppreference.com/w/cpp/experimental/fs/recursive_directory_iterator 
+namespace fs = std::experimental::filesystem;
+
 void helpInfo();
 vector<File> storeFileInfo(vector <string> v);
 bool fileExist(string fileName);
 File parseStat(string filename);
-vector<string> splitOnWhiteSpace(string input);
 void fillTarFile(string tarfile, vector<File>v);
+string getFileContents(string filename);
 string int_to_str(int input);
 
 int main(int argc, char *argv[])
@@ -83,21 +89,6 @@ vector<File> storeFileInfo(vector <string> v)
 		{
 			File f = parseStat(v[i]);	
 			file_objs.push_back(f);		
-			string command = "ls -l " + v[i] + " > file.txt";
-			system(command.c_str());
-		
-			//create a file object to read in the file information 
-			//from file.txt
-			fstream file("file.txt", ios::in);
-			string line; 
-	
-			//get the line of information from file.txt and store it
-			//in a string so we can grab information from it
-			getline(file, line);
-			cout << line << endl;
-
-			//remove the file.txt file from the directory
-			system("rm file.txt");
 		}
 		else
 		{
@@ -168,10 +159,45 @@ File parseStat(string filename)
 void fillTarFile(string tarfile, vector<File>v)
 {
 	fstream outfile (tarfile, ios::out | ios::binary);
+	int numFiles = v.size();
+	
+	//write out how many files are contained in the tarfile
+	outfile.write( (const char *) &numFiles, sizeof (int));
+	
+	//write out all the File objects to the tarfile
 	for (int i = 0; i < v.size(); i++)
 	{
 		outfile.write( (const char *) &v[i], sizeof (File));	
+	
+		//code to put the contents of the file into a char string 
+		int fileSize = stoi(v[i].getSize());	
+		char *str = new char[fileSize];
+
+		//write the char string out to the binary file
+		outfile.write( (const char *) &str, sizeof(str));		
 	}
+}
+
+//a method that passes in the file name and returns a string
+//precondition: pass in the filename for our file object (string)
+//postcondition: return a string that holds all the contents of the file 
+string getFileContents(string filename)
+{
+	fstream infile (filename, ios::in);
+
+	//string to hold all the contents of the file	
+	string fileContents;
+
+	//string to hold each individual line of the file we're grabbing
+	//with getline
+	string line;
+	
+	while(infile)
+	{
+		getline(infile, line);
+		fileContents += line;
+	}
+	return fileContents;	
 }
 
 //method to convert a given integer to a string value
