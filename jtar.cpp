@@ -13,12 +13,11 @@
 #include <sys/types.h>
 #include <sstream>/*for converting int to string*/
 #include <experimental/filesystem> /*for recursively iterating through file*/
-
+#include <string>
 using namespace std;
 
 //found this here: https://en.cppreference.com/w/cpp/experimental/fs/recursive_directory_iterator 
 namespace fs = std::experimental::filesystem;
-
 void helpInfo();
 vector<File> storeFileInfo(vector <string> v);
 bool fileExist(string fileName);
@@ -26,6 +25,7 @@ File parseStat(string filename);
 void fillTarFile(string tarfile, vector<File>v);
 string getFileContents(string filename);
 string int_to_str(int input);
+void readTarfile(string tarfile);
 
 int main(int argc, char *argv[])
 {
@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 	}
 	else if(arg1 == "-tf")
 	{
-
+		readTarfile(argv[2]);
 	} 
 	else if(arg1 == "-xf")
 	{
@@ -89,6 +89,23 @@ vector<File> storeFileInfo(vector <string> v)
 		{
 			File f = parseStat(v[i]);	
 			file_objs.push_back(f);		
+			//if the file is a directory, then recursively iterate
+			//through all the files in the directory
+			if (f.isADir())
+			{
+				cout << "is a directory" << endl;
+				string directory = v[i];
+				//create a path file object that can be used to iterate over the directory
+				fs::path pathObj (directory);
+
+				//for loop to recursively iterate through a given file path
+				//and create file objects for each file in a given directory
+				for(const auto& p: fs::recursive_directory_iterator(pathObj))
+				{
+					File f1 = parseStat(p.path());
+					file_objs.push_back(f1);
+				}	
+			}
 		}
 		else
 		{
@@ -136,19 +153,22 @@ File parseStat(string filename)
 	//copy the size into a string and copy the string into char array	
 	string s_size = int_to_str(buf.st_size);
 	strcpy(size, s_size.c_str());
-	
 	//copy the size into a string and copy the string into char array	
-	string s_pmode = int_to_str(buf.st_mode & S_IRWXU);
-	s_pmode += int_to_str(buf.st_mode & S_IRWXG);
+	string s_pmode = int_to_str((buf.st_mode & S_IRWXU) >> 6);
+	s_pmode += int_to_str((buf.st_mode & S_IRWXG) >> 3);
 	s_pmode += int_to_str(buf.st_mode & S_IRWXO);
-	
 	strcpy(pmode, s_pmode.c_str());
 	
 	//copy the modification time to the stamp char array
 	strftime(stamp, 16, "%Y%m%d%H%M.%S", localtime(&buf.st_mtime));
-	
+
 	//instantiate a file object with the character arrays
 	File f(name, pmode, size, stamp);
+
+	//if the given file is a directory, then mark it as a directory
+	if (S_ISDIR(buf.st_mode))
+		f.flagAsDir();
+	
 	return f;
 }
 
@@ -167,17 +187,62 @@ void fillTarFile(string tarfile, vector<File>v)
 	//write out all the File objects to the tarfile
 	for (int i = 0; i < v.size(); i++)
 	{
+		cout << "name: " << v[i].getName() << endl;
+		cout << "pmode: " << v[i].getPmode() << endl;
+		cout << "size: " << v[i].getSize() << endl;
+		cout << "stamp: " << v[i].getStamp() << endl;
 		outfile.write( (const char *) &v[i], sizeof (File));	
 	
 		//code to put the contents of the file into a char string 
 		int fileSize = stoi(v[i].getSize());	
 		char *str = new char[fileSize];
-
+		string fileName = v[i].getName();
+		string contents = getFileContents(fileName);
+		strcpy(str, contents.c_str());
 		//write the char string out to the binary file
-		outfile.write( (const char *) &str, sizeof(str));		
+		outfile.write( (const char *) &str, sizeof(str));	
+		cout << "file contents: " << str << endl;	
 	}
 }
 
+//method that prints out the information stored in a tar file
+void readTarfile(string tarfile)
+{
+	fstream infile(tarfile, ios::in|ios::binary);
+	
+	if (fileExist(tarfile))
+	{
+		//extract the number of files in the tarfile so we can 
+		//iterate over them
+		int numFiles;
+		infile.read((char *) &numFiles, sizeof(int));
+
+		//iterate over all the files in the directory
+		for(int i = 0; i < numFiles; i++)
+		{
+			//read in the filename
+			char fileName [81];
+			infile.read((char *) &fileName, sizeof(fileName));	
+			cout << "filename: " << fileName << endl;
+		
+		char pmode[5];
+		infile.read((char *) &pmode, sizeof(pmode));
+		cout << "pmode: " << pmode << endl;	
+		
+		char fileSize[7];
+		infile.read((char *) &fileSize, sizeof(fileSize));
+		cout << "fileSize: " << fileSize << endl;
+
+		char stamp[16];
+		infile.read((char *) &stamp, sizeof(stamp));
+		cout << "stamp: " << stamp << endl;
+		
+		int fileSize_i = stoi(fileSize);
+		
+		infile.seekg(fileSize_i, ios::cur);
+	}
+	}	
+}
 //a method that passes in the file name and returns a string
 //precondition: pass in the filename for our file object (string)
 //postcondition: return a string that holds all the contents of the file 
