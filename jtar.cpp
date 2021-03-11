@@ -197,11 +197,23 @@ void fillTarFile(string tarfile, vector<File>v)
 		int fileSize = stoi(v[i].getSize());	
 		char *str = new char[fileSize];
 		string fileName = v[i].getName();
-		string contents = getFileContents(fileName);
+		string contents = getFileContents(v[i].getName());
+		cout << "file contents: " << contents << endl;
+		
+		//fstream infile (fileName, ios::in);
+
+		//string to hold all the contents of the file	
+		//char* buffer = new char[fileSize];
+		//infile.read(buffer, fileSize);
+		cout << "contents: " << contents.c_str() << endl;
+		cout << "contents.size(): " << contents.size() << endl;
 		strcpy(str, contents.c_str());
 		//write the char string out to the binary file
 		outfile.write( (const char *) &str, sizeof(str));	
-		cout << "file contents: " << str << endl;	
+		
+		//delete [] buffer;
+		//printf("%d", buffer);
+		cout << "tellg: " << outfile.tellg() << endl;	
 	}
 }
 
@@ -225,22 +237,24 @@ void readTarfile(string tarfile)
 			infile.read((char *) &fileName, sizeof(fileName));	
 			cout << "filename: " << fileName << endl;
 		
-		char pmode[5];
-		infile.read((char *) &pmode, sizeof(pmode));
-		cout << "pmode: " << pmode << endl;	
+			char pmode[5];
+			infile.read((char *) &pmode, sizeof(pmode));
+			cout << "pmode: " << pmode << endl;	
 		
-		char fileSize[7];
-		infile.read((char *) &fileSize, sizeof(fileSize));
-		cout << "fileSize: " << fileSize << endl;
+			char fileSize[7];
+			infile.read((char *) &fileSize, sizeof(fileSize));
+			cout << "fileSize: " << fileSize << endl;
 
-		char stamp[16];
-		infile.read((char *) &stamp, sizeof(stamp));
-		cout << "stamp: " << stamp << endl;
+			char stamp[16];
+			infile.read((char *) &stamp, sizeof(stamp));
+			cout << "stamp: " << stamp << endl;
 		
-		int fileSize_i = stoi(fileSize);
-		
-		infile.seekg(fileSize_i, ios::cur);
-	}
+			int fileSize_i = stoi(fileSize);
+			int moveBytes = fileSize_i + 16+7+5+81;	
+			infile.seekg(moveBytes, ios::beg);
+			cout << "fileSize_i: " << fileSize_i << endl;
+			cout << "tellg: " << infile.tellg();
+		}
 	}	
 }
 //a method that passes in the file name and returns a string
@@ -248,21 +262,32 @@ void readTarfile(string tarfile)
 //postcondition: return a string that holds all the contents of the file 
 string getFileContents(string filename)
 {
-	fstream infile (filename, ios::in);
+	ifstream infile (filename.c_str());
 
+	ostringstream buf;
+	char ch;
+
+	cout << "filename in getFileContents: " << filename << endl;
+	while (buf && infile.get(ch))
+	{
+		buf.put(ch);
+	}
+	return buf.str();
 	//string to hold all the contents of the file	
-	string fileContents;
-
+//	infile.read(fileContents, size);
+//	string fileContents;
 	//string to hold each individual line of the file we're grabbing
 	//with getline
-	string line;
-	
+//	string line;
+/*	
 	while(infile)
 	{
 		getline(infile, line);
+		cout << "line: " << line << endl;
 		fileContents += line;
 	}
-	return fileContents;	
+	cout << "getFileContents: " << fileContents << endl;
+	return fileContents;	*/
 }
 
 //method to convert a given integer to a string value
