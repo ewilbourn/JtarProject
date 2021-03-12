@@ -13,7 +13,7 @@
 #include <sys/types.h>
 #include <sstream>/*for converting int to string*/
 #include <experimental/filesystem> /*for recursively iterating through file*/
-#include <string>
+#include <string>/*for find_last_of method*/
 using namespace std;
 
 //found this here: https://en.cppreference.com/w/cpp/experimental/fs/recursive_directory_iterator 
@@ -25,7 +25,8 @@ File parseStat(string filename);
 void fillTarFile(string tarfile, vector<File>v);
 string getFileContents(string filename);
 string int_to_str(int input);
-void readTarfile(string tarfile);
+void readTarfile(string tarfile, string arg);
+void extractFile(File f, string fileContents);
 
 int main(int argc, char *argv[])
 {
@@ -55,14 +56,12 @@ int main(int argc, char *argv[])
 			cout << "Error: Only " << argc << " arguments were entered when at least 4 were needed." << endl;
 		}
 	}
-	else if(arg1 == "-tf")
+	else
 	{
-		readTarfile(argv[2]);
+		//Pass in the filename and the file option the user passed in.
+		//The two file options that we could have are "-tf" or "-xf".
+		readTarfile(argv[2], arg1);
 	} 
-	else if(arg1 == "-xf")
-	{
-
-	}
 	return 0;
 }
 
@@ -193,69 +192,107 @@ void fillTarFile(string tarfile, vector<File>v)
 		cout << "stamp: " << v[i].getStamp() << endl;
 		outfile.write( (const char *) &v[i], sizeof (File));	
 	
-		//code to put the contents of the file into a char string 
-		int fileSize = stoi(v[i].getSize());	
-		char *str = new char[fileSize];
-		string fileName = v[i].getName();
-		string contents = getFileContents(v[i].getName());
-		cout << "file contents: " << contents << endl;
-		
-		//fstream infile (fileName, ios::in);
+		if(!v[i].isADir())
+		{
+			//integer to hold integer representation of the fileSize
+			int fileSize = stoi(v[i].getSize());	
 
-		//string to hold all the contents of the file	
-		//char* buffer = new char[fileSize];
-		//infile.read(buffer, fileSize);
-		cout << "contents: " << contents.c_str() << endl;
-		cout << "contents.size(): " << contents.size() << endl;
-		strcpy(str, contents.c_str());
-		//write the char string out to the binary file
-		outfile.write( (const char *) &str, sizeof(str));	
+			//code to put the contents of the file into a char string 
+			char *str = new char[fileSize];
 		
-		//delete [] buffer;
-		//printf("%d", buffer);
-		cout << "tellg: " << outfile.tellg() << endl;	
+			//string to hold all the contents of the file	
+			string contents = getFileContents(v[i].getName());
+			cout << "file contents: " << contents << endl;
+			cout << "contents.size(): " << contents.size() << endl;
+			
+			strcpy(str, contents.c_str());
+			cout << "writing to the tarfile" << endl;	
+				
+			//write the char string out to the binary file
+			outfile.write(str, stoi(v[i].getSize()));	
+		//	cout << "tellg: " << outfile.tellg() << "\n" << endl;	
+		}
+		cout << "going back to top of loop" << endl;
 	}
+	cout << "exiting method" << endl;
 }
 
 //method that prints out the information stored in a tar file
-void readTarfile(string tarfile)
+//precondition: pass in the name of the binary tarfile and the option
+//for the tarfile the user entered on the command line
+//postcondition: returns nothing, but the vector with the 
+void readTarfile(string tarfile, string arg)
 {
 	fstream infile(tarfile, ios::in|ios::binary);
-	
+		
 	if (fileExist(tarfile))
 	{
 		//extract the number of files in the tarfile so we can 
 		//iterate over them
 		int numFiles;
 		infile.read((char *) &numFiles, sizeof(int));
-
 		//iterate over all the files in the directory
 		for(int i = 0; i < numFiles; i++)
 		{
-			//read in the filename
-			char fileName [81];
-			infile.read((char *) &fileName, sizeof(fileName));	
-			cout << "filename: " << fileName << endl;
+			//read in the File object
+			File f;
+			infile.read((char *) &f, sizeof(File));
 		
-			char pmode[5];
-			infile.read((char *) &pmode, sizeof(pmode));
-			cout << "pmode: " << pmode << endl;	
-		
-			char fileSize[7];
-			infile.read((char *) &fileSize, sizeof(fileSize));
-			cout << "fileSize: " << fileSize << endl;
+			//instantiate a c-string to hold the contents of file	
+			int len = stoi(f.getSize());
+			char* str = new char[len+1];
+			if(!f.isADir())
+			{
+				//read in the contents of each File	
+				infile.read(str, len);
+			//	cout << "str: " << str << endl;
+			//	cout << "sizeof(str): " << sizeof(str) << endl;
+			//	cout << "fileSize_i: " << len << endl;
+			//	cout << "tellg: " << infile.tellg() << endl;
+				delete [] str;
+			}
+			//command to print out the names of the files stored in the
+			//tarfile	
+			if(arg == "-tf")
+			{
+				cout << f.getName() << endl;
+			}
 
-			char stamp[16];
-			infile.read((char *) &stamp, sizeof(stamp));
-			cout << "stamp: " << stamp << endl;
-		
-			int fileSize_i = stoi(fileSize);
-			int moveBytes = fileSize_i + 16+7+5+81;	
-			infile.seekg(moveBytes, ios::beg);
-			cout << "fileSize_i: " << fileSize_i << endl;
-			cout << "tellg: " << infile.tellg();
+			//command to extract all the files from the tarfile
+			else if(arg == "-xf")
+			{
+				if(f.isADir())		
+					extractFile(f, "");
+				else
+					extractFile(f,str);
+			}
 		}
 	}	
+}
+//a method that extracts all files from a tarfile one by one
+//precondition: pass in the File object for the file we are extracting
+//postcondition: return nothing, but all the files are extracted and put in their 
+//proper directories
+void extractFile(File f, string fileContents)
+{
+	if(f.isADir())
+	{
+		string command = "mkdir -p" + f.getName();
+		system(command.c_str());
+	}	
+	else
+	{
+		string fileName = f.getName();
+		
+		//find the position of the last "/" in the file name
+		size_t lastSlash = fileName.find_last_of("/");
+		
+		//get the raw name of the file without the directories
+		//it's stored in; i.e. the filename Examples/input1 would 
+		//now just be input1
+		string new_fileName = fileName.substr(lastSlash+1);
+		cout << "file: " << new_fileName << endl;
+	}
 }
 //a method that passes in the file name and returns a string
 //precondition: pass in the filename for our file object (string)
@@ -266,28 +303,14 @@ string getFileContents(string filename)
 
 	ostringstream buf;
 	char ch;
-
-	cout << "filename in getFileContents: " << filename << endl;
+	
+	//read the file character by character into a buffer
 	while (buf && infile.get(ch))
 	{
 		buf.put(ch);
 	}
+	//turn the buffer into a string and return it
 	return buf.str();
-	//string to hold all the contents of the file	
-//	infile.read(fileContents, size);
-//	string fileContents;
-	//string to hold each individual line of the file we're grabbing
-	//with getline
-//	string line;
-/*	
-	while(infile)
-	{
-		getline(infile, line);
-		cout << "line: " << line << endl;
-		fileContents += line;
-	}
-	cout << "getFileContents: " << fileContents << endl;
-	return fileContents;	*/
 }
 
 //method to convert a given integer to a string value
