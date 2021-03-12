@@ -58,12 +58,23 @@ int main(int argc, char *argv[])
 			cout << "Error: Only " << argc << " arguments were entered when at least 4 were needed." << endl;
 		}
 	}
+	else if (arg1 == "-tf" || arg1 == "-xf")
+	{
+		if (argc >= 3)
+		{
+			//Pass in the filename and the file option the user passed in.
+			//The two file options that we could have are "-tf" or "-xf".
+			readTarfile(argv[2], arg1);
+		}
+		else
+		{
+			cout << "Error: Only " << argc << " arguments were entered when at least 3 were needed." << endl;
+		}
+	} 
 	else
 	{
-		//Pass in the filename and the file option the user passed in.
-		//The two file options that we could have are "-tf" or "-xf".
-		readTarfile(argv[2], arg1);
-	} 
+		cout << "Invalid option entered. Use --help to see valid options." << endl;
+	}
 	return 0;
 }
 
@@ -212,6 +223,7 @@ void fillTarFile(string tarfile, vector<File>v)
 				
 			//write the char string out to the binary file
 			outfile.write(str, stoi(v[i].getSize()));	
+			cout << "filling file with: " << str << endl;
 		//	cout << "tellg: " << outfile.tellg() << "\n" << endl;	
 		}
 		cout << "going back to top of loop" << endl;
@@ -240,17 +252,19 @@ void readTarfile(string tarfile, string arg)
 			File f;
 			infile.read((char *) &f, sizeof(File));
 		
+		cout << "name: " << f.getName() << endl;
+		cout << "pmode: " << f.getPmode() << endl;
+		cout << "size: " << f.getSize() << endl;
+		cout << "stamp: " << f.getStamp() << endl;
 			//instantiate a c-string to hold the contents of file	
 			int len = stoi(f.getSize());
-			char* str = new char[len+1];
+			char* str = new char[len];
 			if(!f.isADir())
 			{
 				//read in the contents of each File	
 				infile.read(str, len);
-			//	cout << "str: " << str << endl;
-			//	cout << "sizeof(str): " << sizeof(str) << endl;
-			//	cout << "fileSize_i: " << len << endl;
-			//	cout << "tellg: " << infile.tellg() << endl;
+				cout << "str: " << str << endl;
+				cout << "len: " << len << endl;
 			}
 			//command to print out the names of the files stored in the
 			//tarfile	
@@ -266,12 +280,16 @@ void readTarfile(string tarfile, string arg)
 					extractFile(f, "");
 				else
 				{	
-					cout << "file contents before call: " << str << endl;
+					//cout << "file contents before call: " << str << endl;
 					extractFile(f,str);
 				}
 			}
 			delete [] str;
 		}
+	}	
+	else
+	{
+		cout << tarfile << " does not exist." << endl;
 	}	
 }
 //a method that extracts all files from a tarfile one by one
@@ -298,7 +316,6 @@ void extractFile(File f, string fileContents)
 		
 		//find the position of the last "/" in the file name
 		size_t lastSlash = fileName.find_last_of("/");
-		cout << "position of lastSlash: " << lastSlash << endl;		
 		
 		if(lastSlash <= fileName.size())
 		{
@@ -311,16 +328,13 @@ void extractFile(File f, string fileContents)
 			string cd_command = "cd " + directory_path;
 			system(cd_command.c_str());
 		}
-
-		//get the raw name of the file without the directories
-		//it's stored in; i.e. the filename Examples/input1 would 
-		//now just be input1
-		string new_fileName = fileName.substr(lastSlash+1);
-		cout << "file: " << new_fileName << endl;
-		cout << "fileContents: " << fileContents << endl;		
-		ofstream new_file;
-		new_file.open(f.getName());
-		new_file << fileContents;
+		string new_filename = fileName.substr(lastSlash+1);
+		fstream new_file(fileName, ios::out);
+		//if the fileContents grabs more information than just the actual
+		//text that was originally in the file, then this prevents that extra
+		//garbage from being printed.
+		for(int i = 0; i < stoi(f.getSize()); i++)
+			new_file.put(fileContents[i]);
 		
 		//update the time stamp and file permissions for each file being passed in
 		string chmod_command = "chmod " + f.getPmode() + " "+ f.getName();
