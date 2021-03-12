@@ -27,6 +27,8 @@ string getFileContents(string filename);
 string int_to_str(int input);
 void readTarfile(string tarfile, string arg);
 void extractFile(File f, string fileContents);
+void createNewDirectory(string name);
+void updateInfo(File f);
 
 int main(int argc, char *argv[])
 {
@@ -249,7 +251,6 @@ void readTarfile(string tarfile, string arg)
 			//	cout << "sizeof(str): " << sizeof(str) << endl;
 			//	cout << "fileSize_i: " << len << endl;
 			//	cout << "tellg: " << infile.tellg() << endl;
-				delete [] str;
 			}
 			//command to print out the names of the files stored in the
 			//tarfile	
@@ -264,8 +265,12 @@ void readTarfile(string tarfile, string arg)
 				if(f.isADir())		
 					extractFile(f, "");
 				else
+				{	
+					cout << "file contents before call: " << str << endl;
 					extractFile(f,str);
+				}
 			}
+			delete [] str;
 		}
 	}	
 }
@@ -277,8 +282,15 @@ void extractFile(File f, string fileContents)
 {
 	if(f.isADir())
 	{
-		string command = "mkdir -p" + f.getName();
-		system(command.c_str());
+		//if the directory does not already exist, then make new directory
+		createNewDirectory(f.getName());
+	
+		//update the time stamp and file permissions for each file being passed in
+		updateInfo(f);
+		
+		//change into the proper directory to create the file
+		string cd_command = "cd " + f.getName();
+		system(cd_command.c_str());
 	}	
 	else
 	{
@@ -286,14 +298,64 @@ void extractFile(File f, string fileContents)
 		
 		//find the position of the last "/" in the file name
 		size_t lastSlash = fileName.find_last_of("/");
+		cout << "position of lastSlash: " << lastSlash << endl;		
 		
+		if(lastSlash <= fileName.size())
+		{
+			string directory_path = fileName.substr(0, lastSlash);
+
+			//if the directory does not already exist, then make new directory
+			createNewDirectory(directory_path);
+
+			//change into the proper directory to create the file
+			string cd_command = "cd " + directory_path;
+			system(cd_command.c_str());
+		}
+
 		//get the raw name of the file without the directories
 		//it's stored in; i.e. the filename Examples/input1 would 
 		//now just be input1
 		string new_fileName = fileName.substr(lastSlash+1);
 		cout << "file: " << new_fileName << endl;
+		cout << "fileContents: " << fileContents << endl;		
+		ofstream new_file;
+		new_file.open(f.getName());
+		new_file << fileContents;
+		
+		//update the time stamp and file permissions for each file being passed in
+		string chmod_command = "chmod " + f.getPmode() + " "+ f.getName();
+		system(chmod_command.c_str());
+		string touch_command = "touch -t " + f.getStamp() + " " + f.getName();
+		system(touch_command.c_str());
+	}
+	
+}
+//method to create a new directory if the given directory does not already exist
+//precondition: pass in the name of the directory
+//postcondition: return nothing, but the new directory is created
+void createNewDirectory(string fileName)
+{
+	//if the directory does not already exist, then make new directory
+	if(!fileExist(fileName))
+	{
+		string command = "mkdir " + fileName;
+		system(command.c_str());
 	}
 }
+
+//method to update the file permission and time stamp for a given file
+//precondition: pass in the File object
+//postcondition: return nothing, but the file permission and time stamp
+//are updated
+void updateInfo(File f)
+{
+	//update the time stamp and file permissions for each file being passed in
+	string chmod_command = "chmod " + f.getPmode() + " "+ f.getName();
+	system(chmod_command.c_str());
+	string touch_command = "touch -t " + f.getStamp() + " " + f.getName();
+	system(touch_command.c_str());
+}
+
 //a method that passes in the file name and returns a string
 //precondition: pass in the filename for our file object (string)
 //postcondition: return a string that holds all the contents of the file 
