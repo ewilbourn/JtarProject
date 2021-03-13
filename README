@@ -1,0 +1,122 @@
+Emily Wilbourn
+README file 
+CSC 310 Project 2 -jtar implementation
+
+----------------------------------------------------------------------------------------------
+
+NOTE: To compile this program, we need to execute the following command: 
+
+c++ -std=c++17 jtar.cpp file.o -lstdc++fs
+
+For recursively iterating through directories, I found the <experimental/filesystem>
+library, and in order for it to compile correctly on cobra, we need the extra tags that
+I've entered above.
+
+Funny story: I actually had to write a program for my internship this past summer that 
+iterated through two directories and compared files with a specific file ending (i.e. .txt,
+.yaml, etc.) and used this library, which was useful for the task at hand here!!
+
+
+
+----------------------------------------------------------------------------------------------
+
+File Class Description:
+
+file.h (header file):
+
+class File
+{
+   public :
+       File (const File& otherFile);//copy constructor (deep copy)
+       File (const char name[], const char pmode[],
+             const char size[], const char stamp[]);
+       File ();//default constructor
+       File & operator = (const File& otherFile);//operator overloading with deep copy
+
+       //getters
+       string getSize() const;
+       string getName() const;
+       string getPmode() const;
+       string getStamp() const;
+       int recordSize() const;
+
+       //marks something as a directory and not a file
+       void flagAsDir();
+       bool isADir() const;
+
+   private :
+       char name[81], pmode[5], size[7], stamp[16];//arrays are pointers in disguise...
+       bool ADir;
+};
+
+Description:
+	Constuctors:
+		-We have 3 different ways to instantiate a File object.
+		1. Copy an already existing file into a new file (deep copy)
+		2. Create a new File with the name[],pmode[],size[], and stamp[] 
+		characteristics being passed in.
+		3. Default constructor - instantiate an empty File object
+	
+	Methods:
+		Getters:
+			1. getSize() - returns string with the size attribute of File
+			2. getName() - returns string with name attribute of File
+			3. getPmode()- returns string with protection mode attribute of File
+			4. getStamp()- returns string with time stamp attribute of File
+			5. recordSize()-returns integer with the total size of the File object; 
+			it adds up the size of the size, name, pmode, and stamp private character arrays
+
+		Other methods:
+			1. flagAsDir() - sets the private variable ADir to true when called; this is 
+			used to flag a file as being a directory
+			2. isADir() - returns the private variable ADir to tell us if the current file
+			is a directory or not
+		
+		Private variables:
+			1. char name[81]: char array of size 81 that holds the name of the File
+			2. char pmode[5]: char array of size 5 that holds the protection mode of File
+			3. char size[7]: char array of size 7 that holds the size of the File
+			4. char stamp[16]: char array of size 16 that holds the time stamp of the 
+			modification time of the file.
+
+----------------------------------------------------------------------------------------------
+
+Plan:
+1. Start by setting up the structure to accept different tags on the command line
+2. Write a method to return if a file/directory is valid
+3. Write a method to return a File object with the information about a file from the 
+stat struct in the <sys/stat.h> for the cf command
+
+
+For the -cf command:
+1. Read in each file that was given on the command line and store it in a vector of strings
+2. Pass this vector of strings into a method that will iterate over all the strings and
+call another method that first verifies that we have a valid file. Then, if the file
+is valid, call another method called parseStat, which will parse the information spat
+out by the stat command on a given file and returns a File object with the name, size,
+pmode, and time stamp instantiated. If a given file is a directory, then make a call to
+flagAsDir() in the File class to flag a file as being a directory. Once the File is 
+returned from the parseStat method, it is pushed to a vector of File objects that we
+can use when we're filling our tarfile.
+3. Once we've iterated over all the files and directories, we call a method called
+fillTarFile, which loads all our File objects into a binary file. To get the contents
+of each file (like the actual text that's stored in the file), we call a method called
+getFileContents, which grabs all the data from the text file and puts it into a string.
+We then read the contents of this string into a char* array and write out the contents
+of the char* array to the binary file.
+
+For the -xf command:
+1. Read in the binary tarfile. Start by reading in the number of files that are stored in 
+the tarfile, and then iterate through the file until we've read in each File object and its 
+contents.
+2. Have another method called extractFile that reads in a File object. If the File object 
+is a directory and the directory does not exist in the current working directory, then use
+mkdir to create a new directory. If the File object is not a directory, then create a new 
+file in the directory the file belongs to with all its contents as well. Use chmod to update
+the file permissions and time -t to update the time stamp on each File object that's passed
+in.
+
+For the -tf command:
+1. Read in the binary tarfile. Start by reading in the number of files that are stored in
+the tarfile, and then iterate through the file we've read in each File object and its contents.
+2. Print out the name of each file in the tarfile.  

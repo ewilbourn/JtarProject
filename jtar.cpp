@@ -41,14 +41,16 @@ int main(int argc, char *argv[])
 	{
 		if (argc >= 4)
 		{
-			cout << "argv[2]: " << argv[2] << endl;
 			string tarfile = argv[2];
 			vector <string> files;
 			//start the iterator at 3 because argv[2] is the name 
 			//of the tarfile (binary file) we're loading info into
 			for(int i = 3; i < argc; i++)
 			{
-				files.push_back(argv[i]);			
+				if(fileExist(argv[i]))
+                                        files.push_back(argv[i]);
+                                else
+                                        cout << argv[i] << " does not exist. Exiting program." << endl;
 			}	
 			vector <File> file_objs = storeFileInfo(files);
 			fillTarFile(tarfile, file_objs);
@@ -105,7 +107,6 @@ vector<File> storeFileInfo(vector <string> v)
 			//through all the files in the directory
 			if (f.isADir())
 			{
-				cout << "is a directory" << endl;
 				string directory = v[i];
 				//create a path file object that can be used to iterate over the directory
 				fs::path pathObj (directory);
@@ -199,10 +200,6 @@ void fillTarFile(string tarfile, vector<File>v)
 	//write out all the File objects to the tarfile
 	for (int i = 0; i < v.size(); i++)
 	{
-		cout << "name: " << v[i].getName() << endl;
-		cout << "pmode: " << v[i].getPmode() << endl;
-		cout << "size: " << v[i].getSize() << endl;
-		cout << "stamp: " << v[i].getStamp() << endl;
 		outfile.write( (const char *) &v[i], sizeof (File));	
 	
 		if(!v[i].isADir())
@@ -215,20 +212,13 @@ void fillTarFile(string tarfile, vector<File>v)
 		
 			//string to hold all the contents of the file	
 			string contents = getFileContents(v[i].getName());
-			cout << "file contents: " << contents << endl;
-			cout << "contents.size(): " << contents.size() << endl;
 			
 			strcpy(str, contents.c_str());
-			cout << "writing to the tarfile" << endl;	
 				
 			//write the char string out to the binary file
 			outfile.write(str, stoi(v[i].getSize()));	
-			cout << "filling file with: " << str << endl;
-		//	cout << "tellg: " << outfile.tellg() << "\n" << endl;	
 		}
-		cout << "going back to top of loop" << endl;
 	}
-	cout << "exiting method" << endl;
 }
 
 //method that prints out the information stored in a tar file
@@ -252,10 +242,6 @@ void readTarfile(string tarfile, string arg)
 			File f;
 			infile.read((char *) &f, sizeof(File));
 		
-		cout << "name: " << f.getName() << endl;
-		cout << "pmode: " << f.getPmode() << endl;
-		cout << "size: " << f.getSize() << endl;
-		cout << "stamp: " << f.getStamp() << endl;
 			//instantiate a c-string to hold the contents of file	
 			int len = stoi(f.getSize());
 			char* str = new char[len];
@@ -263,8 +249,6 @@ void readTarfile(string tarfile, string arg)
 			{
 				//read in the contents of each File	
 				infile.read(str, len);
-				cout << "str: " << str << endl;
-				cout << "len: " << len << endl;
 			}
 			//command to print out the names of the files stored in the
 			//tarfile	
@@ -337,10 +321,7 @@ void extractFile(File f, string fileContents)
 			new_file.put(fileContents[i]);
 		
 		//update the time stamp and file permissions for each file being passed in
-		string chmod_command = "chmod " + f.getPmode() + " "+ f.getName();
-		system(chmod_command.c_str());
-		string touch_command = "touch -t " + f.getStamp() + " " + f.getName();
-		system(touch_command.c_str());
+		updateInfo(f);
 	}
 	
 }
